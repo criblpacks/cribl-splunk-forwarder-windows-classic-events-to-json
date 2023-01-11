@@ -1,0 +1,15 @@
+id: default
+groups: {}
+comments: []
+routes:
+  - id: dwRyMe
+    name: Splunk Forwarder Windows Classic Events to JSON
+    final: true
+    disabled: false
+    pipeline: Classic_to_JSON
+    description: Converts  Splunk Forwarder Microsoft-Windows Classic events to JSON
+    clones: []
+    enableOutputExpression: false
+    outputExpression: null
+    filter: "true"
+    output: default

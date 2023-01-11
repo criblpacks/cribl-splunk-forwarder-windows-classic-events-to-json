@@ -1,0 +1,5 @@
+size: 294
+rows: 8
+tags: Fields
+description: Add the EventCode and a comma separated list of the top level array
+  fields you want to drop.
