@@ -14,10 +14,19 @@ This pack is designed to transform Splunk Windows Classic events to JSON, reduce
 Add the following stanza to a **props.conf** file on the **Splunk search head**: `$SPLUNK_HOME/etc/system/local/props.conf` to override the Splunk Add-On settings for the Windows sources.  The props.conf can also be deployed in a new app using the Splunk deployment server.
 
 ```
-[source::WinEventLog:*]
+[source::WinEventLog...]
 KV_MODE = auto
 priority = 1
 ```
+
+### Reloading Splunk configurations
+1. Restart Splunk is the easiest option but people might not want to restart the Search Head.
+1. Reload Search Head Config Files via Search: In Splunk run a search ending with **`| extract reload=t`**
+1. Reload Search Head Config Files via URL: In Splunk change the URL of **`http://yoursplunksearchhead/en-US/debug/refresh`**, hit return and select the refresh button. Might take a little bit to complete.
+1. Clear Search Head Cache via URL: In Splunk change the URL of **`http://yoursplunksearchhead/en-US/_bump`**, hit return and select the refresh button.
+
+
+
 ---
 ## **Using The Pack**
 To use this Pack, follow these steps:
@@ -81,9 +90,16 @@ Simply add the EventCode to the "EventCode" column and comma separated field nam
 ---
 ## **Release Notes**
 ---
-```
-Version 0.0.1 - 2022-01-10: Initial release.
-```
+**1.1.1** - 2022-01-27: Updated Function 32 to support Account_* for multivalued fields.
+
+**1.1.0** - 2022-01-26: Brought back the multi-valued fields in _raw and as top level fields to get around the curly brace issue that Splunk has with search time extractions from JSON arrays.  That's why there is a props.conf file at the top, to auto-extract JSON, and the top level arrays ensure you get both an Account_Name{} field and an Account_Name.  Splunk gives you the ability to dorp curly braces using props.conf, but only with indexed time fields. Splunk should add support in the JSON_TRIM_BRACES_IN_ARRAY_NAMES option of props.conf to support search time extractions without curly braces. 
+
+**1.0.1** - 2022-01-10: Fixed minor pack issue.
+
+**1.0.0** - 2022-01-10: Added a code function before the initial Mask that maps the top level section such as Subject to the Key Names below it, like Account Name. This will make a key such as Subject_Account_Name.  Since the Keys are now unique, this also has a side benefit where arrays were no longer necessary to be extracted at the top level.
+
+**0.9.0** - 2022-01-10: Initial release.
+
 ## **Contributing to the Pack**
 ---
 Discuss this pack on our Community Slack channel [#packs](https://cribl-community.slack.com/archives/C021UP7ETM3).
