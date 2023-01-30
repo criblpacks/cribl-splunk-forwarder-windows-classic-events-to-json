@@ -1,36 +1,46 @@
 output: default
-streamtags: []
 groups:
   zsSc4u:
     name: PowerShell Passthru
     description: Reduce whitespace  and convert to JSON with minimal cleanup.
-    index: 1
+    index: 3
     disabled: false
   aGUgpE:
     name: EventCode Passthru
     description: Add any EventCodes to the TEMPLATE_EventCode_Passthru.csv lookup
       table and convert to JSON with minimal cleanup and finalized,
-    index: 2
+    index: 5
     disabled: false
   yalV7t:
     name: Unique Masking
     description: When the default Mask above does not properly parse the event you
       can create a new Mask to ensure the __bottomMessage is created properly.
-    index: 6
+    index: 11
   sNCI0F:
     name: Message Processing
     description: Based on the contents of the Message, segment to top and/or bottom
       and if XML, process accordingly.
-    index: 10
+    index: 15
     disabled: false
   S3tT36:
     name: Message Drop
     description: "Default: Off - Drop Message if LogName and EventCode are in the
       lookup table"
-    index: 12
+    index: 17
     disabled: false
+  8LP9fF:
+    name: Make multivalued array fields
+    description: Serialize all the user related field, push them into an internal
+      __arrayField, then use Regex to pull out the multi-value keys.
+    index: 21
 asyncFuncTimeout: 1000
 functions:
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: "IMPORTANT:  Select the three grey bars ||| top left and enable the
+        Description option"
   - id: regex_extract
     filter: "true"
     disabled: false
@@ -46,9 +56,9 @@ functions:
     filter: "true"
     disabled: null
     conf:
-      comment: PowerShell events should not be parsed because they contain scripts in
-        the Message are converted to JSON with minimal cleanup and finalized
-    groupId: zsSc4u
+      comment: Default On - PowerShell events should not be parsed because they
+        contain scripts in the Message are converted to JSON with minimal
+        cleanup and finalized
   - id: eval
     filter: /PowerShell/i.test(_raw)
     disabled: false
@@ -80,9 +90,8 @@ functions:
     filter: "true"
     disabled: false
     conf:
-      comment: Any EventCodes in the lookup table will be converted to JSON with
-        minimal cleanup and finalized,
-    groupId: aGUgpE
+      comment: Default On - Any EventCodes in the lookup table will be converted to
+        JSON with minimal cleanup and finalized,
   - id: eval
     filter: C.Lookup(C.vars.EventCode_Passthru,'EventCode').match(__EventCode)
     disabled: false
@@ -207,6 +216,42 @@ functions:
     final: false
     description: Extract the top, first line of the Message and the remainder to
       three internal fields.
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: Create sections from Message and take top key and prepend to all
+        sub-keys to ensure proper key names
+  - id: code
+    filter: "true"
+    disabled: false
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        /* Split __bottomMessage into an array of elements */
+
+        __e['__blocks_1'] = __e['__bottomMessage'].replace(/\r\r\n/g,'\r\n').split('\r\n\r\n')
+
+
+        for (let i = 0; i < __e['__blocks_1'].length; i++) {
+            let block = __e['__blocks_1'][i];
+            var block_lines = block.split('\r\n');
+            if (block_lines.length > 1) {
+                var prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
+                for (let j = 1; j < block_lines.length; j++) {
+                    block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
+                }
+                __e['__blocks_1'][i] = block_lines.join('\r\n')
+            }  
+        }
+
+
+        __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n')
+
+        delete __e['__blocks_1']
+    final: false
+    description: Create sections from Message and take top key and prepend to all
+      subkeys to ensure proper key names
   - id: mask
     filter: __EventCode!='4661'
     disabled: false
@@ -242,7 +287,7 @@ functions:
     filter: "true"
     disabled: null
     conf:
-      comment: Mask Template Exceptions are place in the following group
+      comment: Mask Template Exceptions are place in the following group.
   - id: comment
     filter: "true"
     disabled: null
@@ -334,7 +379,7 @@ functions:
       source: __bottomMessage
       iterations: 1000
       overwrite: false
-      regex: /(?<_NAME_0>[\p{L}][0-9-\s'’\p{L}]+):_{1,2}(?<_VALUE_0>[^_\r\n]+)/gu
+      regex: /(?<_NAME_0>[\p{L}][()0-9-\s'’\p{L}]+):_{1,2}(?<_VALUE_0>[^_\r\n]+)/gu
       fieldNameExpression: name.replace(/ /g,'_').replace(/[()]/g,'_').replace(/['’]/g,'')
       regexList: []
     description: Regular expression to handle all languages for the Key names
@@ -393,7 +438,8 @@ functions:
     filter: "true"
     disabled: null
     conf:
-      comment: In some events, the Message = Description and we can drop the extra key.
+      comment: Default On - In some events, the Message = Description and we can drop
+        the extra key.
   - id: comment
     filter: "true"
     disabled: false
@@ -413,11 +459,6 @@ functions:
       with no other subfields
     groupId: S3tT36
     final: false
-  - id: comment
-    filter: "true"
-    disabled: null
-    conf:
-      comment: Serialize all the required fields into _raw while excluding others.
   - id: code
     filter: "true"
     disabled: false
@@ -446,7 +487,7 @@ functions:
     description: "Make arrays from fields containing ###SEP###"
   - id: mask
     filter: "true"
-    disabled: null
+    disabled: false
     conf:
       rules:
         - matchRegex: /###UP###/g
@@ -458,6 +499,39 @@ functions:
         - "*"
       depth: 5
     description: "Replace ###UP###"
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: Create _raw JSON STRING (NOT Object) from the field results from
+        __bottomMessage && __topMessage
+  - id: serialize
+    filter: "true"
+    disabled: null
+    conf:
+      type: json
+      dstField: __arrayField
+      fields:
+        - Target_*
+        - Creator_*
+        - Subject_*
+        - New_Logon_*
+        - Account_*
+    description: Serialize all the user related field, push them into an internal
+      __arrayField,
+    groupId: 8LP9fF
+    final: false
+  - id: regex_extract
+    filter: "true"
+    disabled: null
+    conf:
+      source: __arrayField
+      iterations: 100
+      overwrite: false
+      regex: /(?<_KEY_0>[A-Za-z]+_[A-Za-z]+)":"(?<_VALUE_0>[^"]+?)"/
+    groupId: 8LP9fF
+    final: false
+    description: then use Regex to pull out the multi-value keys from the __arrayField
   - id: serialize
     filter: "true"
     disabled: false
@@ -476,14 +550,9 @@ functions:
         - "!Date_And_Time"
         - "*"
       cleanFields: false
-    description: Create _raw JSON String from the field results from __bottomMessage
-      && __topMessage
+    description: Create _raw JSON STRING (NOT Object) from the field results from
+      __bottomMessage && __topMessage
     final: false
-  - id: comment
-    filter: "true"
-    disabled: null
-    conf:
-      comment: Drop all unnecessary fields
   - id: eval
     filter: "true"
     disabled: false
@@ -498,47 +567,44 @@ functions:
         - host
         - hf
         - punct
+        - Account_ID*
+        - Security_ID*
+        - Target_ID*
+        - Creator_ID*
+        - Logon_ID*
+        - Account_Domain*
+        - Account_Name*
       remove:
         - "*"
     description: Drop all unnecessary fields
     final: false
-  - id: code
-    filter: "true"
-    disabled: false
-    conf:
-      maxNumOfIterations: 5000
-      code: __e =
-        Object.assign(__e,Object.fromEntries(Object.entries(JSON.parse(__e['_raw'])).filter(([_,v])
-        => Array.isArray(v))))
-    description: Pull out Arrays fields to top level fields
-    final: false
-  - id: code
-    filter: "true"
-    disabled: false
-    conf:
-      maxNumOfIterations: 5000
-      code: >-
-        let drops =
-        C.Lookup(C.vars.Drop_Fields,'EventCode').match(__e['__EventCode'],"drops").split(',')
-
-        if (Array.isArray(drops)) {
-        	for (let [key, value] of Object.entries(__e)) {
-        	    if (drops.includes(key)) {
-                    __e[key] = undefined
-                }
-            }
-        }
-    description: Drop unnecessary top level fields per EventCode in the
-      TEMPLATE_Drop_Fields.csv lookup table
-    final: false
-  - id: serde
+  - id: comment
     filter: "true"
     disabled: null
+    conf:
+      comment: Default On - Converts a JSON String to a JSON Object
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      add:
+        - name: _raw
+          value: JSON.parse(_raw)
+    final: false
+    description: Create JSON Object
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: Default On - Remove certain values using a Fields Filter Expression
+  - id: serde
+    filter: "true"
+    disabled: false
     conf:
       mode: extract
       type: json
       srcField: _raw
-      fieldFilterExpr: value!='-' && value!='NOT_TRANSLATED' && value!='<null>'
+      fieldFilterExpr: value!='NOT_TRANSLATED' && value!='<null>'
       dstField: _raw
-    description: Convert from JSON String to JSON Object and remove fields using the
-      Fields Filter Expression values
+    description: Use Parser to remove fields with certain values using the Fields
+      Filter Expression
