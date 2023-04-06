@@ -1,6 +1,10 @@
 id: default
 groups: {}
-comments: []
+comments:
+  - id: sANVq0
+    comment: "IMPORTANT:  Select the three grey bars ||| top left and enable the
+      Description option.  Please review the Pack Settings/README."
+    index: 0
 routes:
   - id: dwRyMe
     name: Splunk Forwarder Windows Classic Events to JSON
