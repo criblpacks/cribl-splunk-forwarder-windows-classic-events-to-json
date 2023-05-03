@@ -192,9 +192,8 @@ UCf52z:
   sampleName: 4624 - Security
   isPackOnly: true
   created: 1671642489405
-  size: 2676
-  numEvents: 1
-  modified: 1671642489421
+  size: 13376
+  numEvents: 5
 kMT1Rv:
   sampleName: 4625 - Security
   isPackOnly: true
@@ -206,9 +205,8 @@ H4kEk3:
   sampleName: 4701 - Security (XML Message)
   isPackOnly: true
   created: 1671642532950
-  size: 2699
+  size: 2789
   numEvents: 1
-  modified: 1671642532966
 eylcCf:
   sampleName: 6408 - Security
   isPackOnly: true
@@ -278,7 +276,8 @@ It4BH8:
 IyhduI:
   sampleName: 4703 - Security
   created: 1671716630780
-  size: 1221
+  isPackOnly: true
+  size: 1220
   numEvents: 1
 vlWfZK:
   sampleName: 4765 - Security

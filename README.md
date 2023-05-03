@@ -37,60 +37,28 @@ To use this Pack, follow these steps:
 ---
 ## **Important - Ensure you follow the Lookup steps below to avoid any data loss on Pack updates!**
 
-### **TEMPLATE_EventCode_Passthru.csv**
-1. Some events contain Messages with code, like SQL, PowerShell, or other scripts in the Message and parsing is not necessary.
-1. This lookup table is used to clean up whitespace to provide a small event reduction while allowing the event to passthru without JSON transformation to the Destination.
+### **TEMPLATE_Allow_List_by_EventCode.csv**
+1. A lookup table that only allows specific events and drops the rest.
 1. Follow the steps below to preserve your changes on any Pack updates
-1. Open the **`TEMPLATE_EventCode_Passthru.csv`** in the Pack Knowledge.
+1. Open the **`TEMPLATE_Allow_List_by_EventCode.csv`** in the Pack Knowledge.
 1. Select the Text option by the Edit Mode.
-1. Copy and paste the entire contents of the lookup table to memory or to a new **`EventCode_Passthru.csv`** text file.
+1. Copy and paste the entire contents of the lookup table to memory or to a new **`Allow_List_by_EventCode.csv`** text file.
 1. Notice we removed the word **Template**.
 1. Close the Pack lookup table.
-1. In the **`EventCode_Passthru.csv`** text file, modify the content to suit your requirements and save this file locally.
+1. In the **`Allow_List_by_EventCode.csv`** text file, modify the content to suit your requirements and save this file locally.
 1. Create a new lookup table within the Pack by selecting the New Lookup File button.  There are two options to choose from:
 	1. Choose **Upload a New File** using the file you created.
-	1. Select **Create with Text Editor** option, Filename: **`EventCode_Passthru.csv`** and paste the contents.
+	1. Select **Create with Text Editor** option, Filename: **`Allow_List_by_EventCode.csv`** and paste the contents.
 	1. Select **Save**
-1. Under the **Pack Knowledge/Global Variables** adjust the value to: **`EventCode_Passthru.csv`**
-1. By selecting Save, Commit & Deploy, you are creating a local copy of the Pipelines persist on Pack updates.
-
-### **TEMPLATE_Message_EventCode_LogName.csv**
-1. This lookup table allows you drop the Message field if it is not required.
-1. Open the **`TEMPLATE_Message_EventCode_LogName.csv`** in the Pack Knowledge.
-1. Select the Text option by the Edit Mode.
-1. Copy and paste the entire contents of the lookup table to memory or to a new **`Message_EventCode_LogName.csv`** text file.
-1. Notice we removed the word **Template**.
-1. Close the Pack lookup table.
-1. In the **`Message_EventCode_LogName.csv`** text file, modify the content to suit your requirements and save this file locally.
-1. Create a new lookup table within the Pack by selecting the New Lookup File button.  There are two options to choose from:
-	1. Choose **Upload a New File** using the file you created.
-	1. Select **Create with Text Editor** option, Filename: **`Message_EventCode_LogName.csv`** and paste the contents.
-	1. Select **Save**
-1. Under the **Pack Knowledge/Global Variables** adjust the value to: **`EventCode_LogName.csv`**
-1. By selecting Save, Commit & Deploy, you are creating a local copy of the Pipelines persist on Pack updates.
-
-### **TEMPLATE_Drop_Fields.csv**
-By default, all arrays are extracted to top level fields for CIM compliance mapping in Splunk.
-This lookup table is used to drop unnecessary top level fields.
-Simply add the EventCode to the "EventCode" column and comma separated field names that can be dropped to the "drops" column.
-1. Follow the steps below to preserve your changes on any Pack updates
-1. Open the **`TEMPLATE_Drop_Fields.csv`** in the Pack Knowledge.
-1. Select the Text option by the Edit Mode.
-1. Copy and paste the entire contents of the lookup table to memory or to a new **`Drop_Fields.csv`** text file.
-1. Notice we removed the word **Template**.
-1. Close the Pack lookup table.
-1. In the **`Drop_Fields.csv`** text file, modify the content to suit your requirements and save this file locally.
-1. Create a new lookup table within the Pack by selecting the New Lookup File button.  There are two options to choose from:
-	1. Choose **Upload a New File** using the file you created.
-	1. Select **Create with Text Editor** option, Filename: **`Drop_Fields.csv`** and paste the contents.
-	1. Select **Save**
-1. Under the **Pack Knowledge/Global Variables** adjust the value to: **`Drop_Fields.csv`**
+1. Under the **Pack Knowledge/Global Variables** adjust the value to: **`Allow_List_by_EventCode.csv`**
 1. By selecting Save, Commit & Deploy, you are creating a local copy of the Pipelines persist on Pack updates.
 
 ---
 ## **Release Notes**
 ---
-**1.1.4** - 2022-03-31: Pull EventCode and SourceName to top level fields to ensure that signature_id is created.
+**1.1.5** - 2022-04-20: Separate the Pack Routes for PowerShell, XML in Message, and the rest of the events into their own Routes and removed all Final Flags from the pipelines. Reduced the lookup tables to a single allow list by EventCode.
+
+**1.1.4** - 2022-03-31: Pull EventCode and SourceName to top level fields to ensure that signature_id, src and dst fields are created.
 
 **1.1.3** - 2022-03-31: The Search-time operation sequence of Splunk will perform the transforms before the KV_MODE.  Since the Windows TA isn't designed for JSON, the recommended approach is to send across the top level index-time fields.
 

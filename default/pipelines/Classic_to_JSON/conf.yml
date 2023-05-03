@@ -1,47 +1,20 @@
 output: default
 groups:
-  zsSc4u:
-    name: PowerShell Passthru
-    description: Reduce whitespace  and convert to JSON with minimal cleanup.
-    index: 5
-    disabled: false
-  aGUgpE:
-    name: EventCode Passthru
-    description: Add any EventCodes to the TEMPLATE_EventCode_Passthru.csv lookup
-      table and convert to JSON with minimal cleanup and finalized,
-    index: 7
-    disabled: false
-  LWxWrH:
-    name: Tweaks
-    description: Will address in a future pack update
-    index: 10
-  g1Vz3z:
-    name: Default:OFF - Unique Fields
-    index: 12
+  QEXVGx:
+    name: Long Key Names
+    description: Default:OFF - long keys add to the size of the event.
     disabled: true
-    description: Default:OFF - Unique Log Key Names and no Arrays, can increase event size
+    index: 4
+  LWxWrH:
+    name: Per EventCode Exceptions
+    description: Ensure the following EventCodes are handled properly
+    index: 6
+    disabled: false
   yalV7t:
     name: Unique Masking
     description: When the default Mask above does not properly parse the event you
       can create a new Mask to ensure the __bottomMessage is created properly.
-    index: 15
-  sNCI0F:
-    name: Message Processing
-    description: Based on the contents of the Message, segment to top and/or bottom
-      and if XML, process accordingly.
-    index: 19
-    disabled: false
-  S3tT36:
-    name: "Default: OFF - Message Drop"
-    description: "Default: OFF - Drop Message if LogName and EventCode are in the
-      lookup table"
-    index: 21
-    disabled: true
-  8LP9fF:
-    name: Make multivalued array fields
-    description: Serialize all the user related field, push them into an internal
-      __arrayField, then use Regex to pull out the multi-value keys.
-    index: 25
+    index: 10
 asyncFuncTimeout: 1000
 functions:
   - id: comment
@@ -55,17 +28,7 @@ functions:
     disabled: null
     conf:
       comment: This Pipeline is used only for the traditional Windows Classic Event
-        Structure like all of the samples included with the Pack.  All other
-        types of Windows events will not be processed and will return back to
-        the top level Cribl Routes in the following Eval function.
-  - id: eval
-    filter: "!(/^\\d+\\/\\d+\\/\\d+\\s\\d+:\\d+:\\d+\\s\\w+[\\r\\n]+LogName=.+/m.te\
-      st(_raw) && /^Message=.+[\\r\\n]?/gm.test(_raw))"
-    disabled: null
-    conf: {}
-    final: true
-    description: Stop processing if the event has been evaluated by Cribl as not
-      complying with the traditional Windows Classic Event Structure
+        Structure like all of the samples included with the Pack.
   - id: regex_extract
     filter: "true"
     disabled: false
@@ -76,300 +39,53 @@ functions:
       regex: /EventCode=(?<__EventCode>\d+)/
       regexList:
         - regex: /LogName=(?<__LogName>\w+)/
+        - regex: /^(?<__preMessage>[\S\s]+)Message=(?<__topMessage>.+)$([\r\n]+(?<__bottomMessage>[\S\s]+))?/m
     final: false
     description: Extract the EventCode to an internal field.
+  - id: drop
+    filter: "!C.Lookup(C.vars.Allow_List,'EventCode').match(__EventCode)"
+    disabled: true
+    conf: {}
+    description: Default:OFF - Drop events that are not listed in the Allow_List
+      Lookup table
   - id: comment
     filter: "true"
-    disabled: null
+    disabled: true
     conf:
-      comment: Default On - PowerShell events should not be parsed because they
-        contain scripts in the Message are converted to JSON with minimal
-        cleanup and finalized
-  - id: eval
-    filter: /PowerShell/i.test(_raw)
-    disabled: false
-    conf:
-      add:
-        - name: __passthru
-          value: "'true'"
-        - name: _raw
-          value: _raw.replace(/(?:\s*)?(\r*)?\n/gm,'\n')
-        - name: _raw
-          value: _raw.replace(/(\s+)?([=:|,])(\s+)/gm,'$2')
-        - name: _raw
-          value: _raw.replace(/\t/g,'')
-        - name: _raw
-          value: _raw.replace(/^.\n/gm,'\n')
-        - name: _raw
-          value: _raw.replace(/^-$/gm,'')
-        - name: _raw
-          value: _raw.replace(/\. +/gm,'. ')
-        - name: _raw
-          value: _raw.replace(/ {2,}/gm,' ')
-      remove: []
-    description: If an EventCode matches, just pass the event to the Destination
-      untouched and clean up unnecessary whitespace for reduction and finalize
-      event processing.
-    final: false
-    groupId: zsSc4u
-  - id: comment
+      comment: Create sections from Message and take top key and prepend to all
+        sub-keys to ensure proper key names
+    groupId: QEXVGx
+  - id: code
     filter: "true"
-    disabled: false
+    disabled: true
     conf:
-      comment: Default On - Any EventCodes in the lookup table will be converted to
-        JSON with minimal cleanup and finalized,
-  - id: eval
-    filter: C.Lookup(C.vars.EventCode_Passthru,'EventCode').match(__EventCode) &&
-      __LogName!='Security'
-    disabled: false
-    conf:
-      add:
-        - name: __passthru
-          value: "'true'"
-        - name: _raw
-          value: _raw.replace(/ ?\r\r\n/gm,'\n')
-        - name: _raw
-          value: _raw.replace(/ ?\r+\n/gm,'\n')
-        - name: _raw
-          value: _raw.replace(/^ +([^ ])/gm,'$1')
-        - name: _raw
-          value: _raw.replace(/\t/g,'')
-        - name: _raw
-          value: _raw.replace(/, /gm,',')
-        - name: _raw
-          value: "_raw.replace(/: +/gm,':')"
-        - name: _raw
-          value: _raw.replace(/^-$/gm,'')
-        - name: _raw
-          value: _raw.replace(/\n{3,}/gm,'\n')
-        - name: _raw
-          value: _raw.replace(/\. +/gm,'. ')
-        - name: _raw
-          value: _raw.replace(/ {2,}/gm,' ')
-        - name: _raw
-          value: _raw.replace(/ = /g,'=')
-      remove: []
-    description: If an EventCode matches, just pass the event to the Destination
-      untouched and clean up unnecessary whitespace for reduction and finalize
-      event processing.
+      maxNumOfIterations: 5000
+      code: >-
+        /* Split __bottomMessage into an array of elements */
+
+        __e['__blocks_1'] = __e['__bottomMessage'].replace(/\r\r\n/g,'\r\n').split('\r\n\r\n')
+
+
+        for (let i = 0; i < __e['__blocks_1'].length; i++) {
+            let block = __e['__blocks_1'][i];
+            var block_lines = block.split('\r\n');
+            if (block_lines.length > 1) {
+                var prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
+                for (let j = 1; j < block_lines.length; j++) {
+                    block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
+                }
+                __e['__blocks_1'][i] = block_lines.join('\r\n')
+            }  
+        }
+
+
+        __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n')
+
+        delete __e['__blocks_1']
     final: false
-    groupId: aGUgpE
-  - id: regex_extract
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      source: _raw
-      iterations: 100
-      overwrite: true
-      regex: /^(?<__preMessage>[\S\s]+)Message=(?<Message>[\S\s]+)/
-    groupId: aGUgpE
-    final: false
-    description: Extract the top of the event and the entire Message body
-  - id: serde
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      mode: extract
-      type: kvp
-      srcField: __preMessage
-      cleanFields: false
-      allowedKeyChars: []
-      allowedValueChars: []
-      remove: []
-    groupId: aGUgpE
-    final: false
-    description: Parse Key Values from the internal __preMessage field
-  - id: serialize
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      type: json
-      dstField: _raw
-      fields:
-        - "!_*"
-        - "!cribl_*"
-        - "!index"
-        - "!host"
-        - "!source"
-        - "!sourcetype"
-        - "!hf"
-        - "!punct"
-        - "!Date_And_Time"
-        - "*"
-      cleanFields: false
-    description: Serialize keys to _raw
-    final: false
-    groupId: aGUgpE
-  - id: eval
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      add: []
-      keep:
-        - _*
-        - cribl_*
-        - index
-        - source
-        - sourcetype
-        - host
-        - hf
-        - punct
-      remove:
-        - "*"
-    description: Convert from JSON string to JSON object and finalize processing &
-      drop all unnecessary fields
-    final: false
-    groupId: aGUgpE
-  - id: serde
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      mode: extract
-      type: json
-      srcField: _raw
-      fieldFilterExpr: value!='-'
-      dstField: _raw
-    groupId: aGUgpE
-    final: false
-  - id: serde
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      mode: extract
-      type: json
-      srcField: _raw
-    groupId: aGUgpE
-  - id: eval
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      remove:
-        - "*"
-      keep:
-        - _raw*
-        - _time*
-        - cribl_pipe*
-        - cribl_breaker*
-        - index
-        - source
-        - sourcetype
-        - host
-        - hf*
-        - punct*
-        - date_*
-        - time*pos*
-        - before*
-        - Account_Domain*
-        - Account_Name*
-        - Caller_Computer_Name*
-        - Caller_Domain*
-        - Caller_Logon_ID*
-        - Caller_Machine_Name*
-        - Caller_User_Name*
-        - Change_Type*
-        - Client_Address*
-        - Client_Domain*
-        - Client_Logon_ID*
-        - Client_Machine_Name*
-        - Client_User_Name*
-        - ComputerName*
-        - Creator_Process_Name*
-        - Description*
-        - Domain*
-        - EventData_Xml*
-        - EventID*
-        - EventRecordID*
-        - FileName*
-        - File_Name*
-        - File_Path*
-        - Group_Domain*
-        - Group_Type_Change*
-        - Image_File_Name*
-        - IpAddress*
-        - IpPort*
-        - KeyFilePath*
-        - LogFileCleared_Xml*
-        - LogonType*
-        - Logon_Account*
-        - Logon_ID*
-        - Logon_account*
-        - MemberName*
-        - Member_ID*
-        - Member_Name*
-        - New_Account_Name*
-        - New_Domain*
-        - New_Process_Name*
-        - ObjectName*
-        - Object_Name*
-        - Primary_Domain*
-        - Primary_User_Name*
-        - PrivilegeList*
-        - Process_Command_Line*
-        - RenderingInfo_Xml*
-        - Security_ID*
-        - Source_Network_Address*
-        - Source_Workstation*
-        - SubStatus*
-        - SubjectDomainName*
-        - SubjectLogonId*
-        - SubjectUserName*
-        - Supplied_Realm_Name*
-        - System_Props_Xml*
-        - TargetDomainName*
-        - TargetProcessName*
-        - TargetServerName*
-        - TargetUserName*
-        - Target_Account_ID*
-        - Target_Account_Name*
-        - Target_Domain*
-        - Target_Process_Name*
-        - Target_Server_Name*
-        - Target_User_Name*
-        - TokenElevationType*
-        - Token_Elevation_Type*
-        - User*
-        - UserData_Xml*
-        - User_ID*
-        - User_Name*
-        - Workstation*
-        - WorkstationName*
-        - Workstation_Name*
-        - new_process*
-        - nt_host*
-        - param1*
-        - parent_process*
-        - service_path*
-        - signature*
-        - signature_message*
-        - vendor_privilege*
-        - Privileges*
-        - EventCode
-        - SourceName
-    description: Keep field needed by transforms at top level
-    final: false
-    groupId: aGUgpE
-  - id: eval
-    filter: __passthru=='true'
-    disabled: false
-    conf:
-      add:
-        - disabled: false
-          name: _raw
-          value: JSON.stringify(_raw)
-    groupId: aGUgpE
-    final: true
-  - id: regex_extract
-    filter: "true"
-    disabled: false
-    conf:
-      source: _raw
-      iterations: 100
-      overwrite: true
-      regex: /^(?<__preMessage>[\S\s]+)Message=(?<__topMessage>.+)$([\r\n]+(?<__bottomMessage>[\S\s]+))?/m
-      regexList: []
-    final: false
-    description: Extract the top, first line of the Message and the remainder to
-      three internal fields.
+    description: Create sections from Message and take top key and prepend to all
+      subkeys to ensure proper key names
+    groupId: QEXVGx
   - id: comment
     filter: "true"
     disabled: null
@@ -387,7 +103,7 @@ functions:
     groupId: LWxWrH
   - id: eval
     filter: __EventCode == '6144'
-    disabled: null
+    disabled: false
     conf:
       add:
         - name: __bottomMessage
@@ -422,7 +138,7 @@ functions:
     final: false
   - id: eval
     filter: __EventCode == '5441'
-    disabled: null
+    disabled: false
     conf:
       add:
         - disabled: false
@@ -431,7 +147,7 @@ functions:
     groupId: LWxWrH
   - id: eval
     filter: __EventCode =='1074'
-    disabled: null
+    disabled: false
     conf:
       add:
         - disabled: false
@@ -443,48 +159,8 @@ functions:
     disabled: null
     conf:
       comment: Default:OFF - Unique Log Key Names and no Arrays, can increase event size
-  - id: comment
-    filter: "true"
-    disabled: true
-    conf:
-      comment: This Code Function will dramatically increase the size of the event
-        because it prepends the section header names to the sub fields.  Use
-        with caution.
-    groupId: g1Vz3z
-  - id: code
-    filter: "!__bottomMessage.includes('<?xml version') &&
-      !__bottomMessage.includes('stack trace')"
-    disabled: true
-    conf:
-      maxNumOfIterations: 5000
-      code: >-
-        /* Split __bottomMessage into an array of elements */
-
-        __e['__blocks_1'] = __e['__bottomMessage'].replace(/([^\r])\n/g,'$1\r\n').replace(/\r\r\n/g,'\r\n').split('\r\n\r\n')
-
-
-        for (let i = 0; i < __e['__blocks_1'].length; i++) {
-            let block = __e['__blocks_1'][i];
-            var block_lines = block.split('\r\n');
-            if (block_lines.length > 1) {
-                var prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
-                for (let j = 1; j < block_lines.length; j++) {
-                    block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
-                }
-                __e['__blocks_1'][i] = block_lines.join('\r\n')
-            }  
-        }
-
-
-        __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n')
-
-        delete __e['__blocks_1']
-    final: false
-    description: Create sections from Message and take top key and prepend to all
-      subkeys to ensure proper key names
-    groupId: g1Vz3z
   - id: mask
-    filter: __EventCode!='4661'
+    filter: __EventCode !='4661'
     disabled: false
     conf:
       rules:
@@ -498,6 +174,8 @@ functions:
           replaceExpr: "'###SEP###'"
         - matchRegex: /([^\r])\n/g
           replaceExpr: "`${g1}\\r\\n`"
+        - matchRegex: /(:)\t\r\n/
+          replaceExpr: "`${g1}\\t-\\r\\n`"
         - matchRegex: /\s+\r\r\n/g
           replaceExpr: "'____'"
         - matchRegex: /\s+\r\n\r\n/g
@@ -590,12 +268,27 @@ functions:
     description: Security Template - Put most events into a common schema
     final: false
     groupId: yalV7t
+  - id: serde
+    filter: "true"
+    disabled: false
+    conf:
+      mode: extract
+      type: kvp
+      srcField: __preMessage
+      cleanFields: false
+      allowedKeyChars: []
+      allowedValueChars: []
+      fields: []
+      remove: []
+      keep: []
+    description: Extract Key Value pairs from the internal __preMessage field
+    final: false
   - id: comment
     filter: "true"
     disabled: null
     conf:
       comment: >-
-        Extract all Name : Values from the __bottomMessage field to top level
+        Extract all Key : Values from the __bottomMessage field to top level
         fields.  The <_NAME_0> and <_VALUE_0> is a special capture group that
         dynamically creates the field NAME from the first capture group and
         inserts the VALUE from the second capture group for N number of matches,
@@ -631,101 +324,15 @@ functions:
     description: Regular expression to handle all languages for the Key names
       extracting the Keys to the top level.
     final: false
-  - id: serde
-    filter: "true"
-    disabled: false
-    conf:
-      mode: extract
-      type: kvp
-      srcField: __preMessage
-      cleanFields: false
-      allowedKeyChars: []
-      allowedValueChars: []
-      fields: []
-      remove: []
-      keep:
-        - "*"
-    description: Extract Key Value pairs from the internal __preMessage field (4726)
-    final: false
-  - id: comment
-    filter: "true"
-    disabled: false
-    conf:
-      comment: Convert Messages that contain XML to JSON and retain all attributes
-    groupId: sNCI0F
   - id: eval
-    filter: __bottomMessage.includes('<?xml version') &&
-      !__bottomMessage.includes('stack trace')
+    filter: "true"
     disabled: false
     conf:
       add:
-        - value: C.Text.parseXml(__bottomMessage,true,true)
+        - disabled: false
           name: Message
-    description: Evaluate __Message for XML content and extract fields accordingly
-    final: false
-    groupId: sNCI0F
-  - id: flatten
-    filter: __bottomMessage.includes('<?xml version') &&
-      !__bottomMessage.includes('stack trace')
-    disabled: null
-    conf:
-      fields:
-        - Message
-      prefix: ""
-      depth: 6
-      delimiter: _
-    groupId: sNCI0F
-    final: false
-  - id: rename
-    filter: __bottomMessage.includes('<?xml version') &&
-      !__bottomMessage.includes('stack trace')
-    disabled: false
-    conf:
-      wildcardDepth: 5
-      renameExpr: name.replace(/Message_AuditBase_ContextComponents_/,'').replace(/Message_AuditBase_/,'').replace(/Message_/,'')
-    groupId: sNCI0F
-    final: false
-  - id: comment
-    filter: "true"
-    disabled: false
-    conf:
-      comment: Create Message key from the internal __topMessage key
-    groupId: sNCI0F
-  - id: eval
-    filter: "!__bottomMessage.includes('<?xml version') && __topMessage"
-    disabled: false
-    conf:
-      add:
-        - name: Message
-          value: __topMessage.trim()
-    final: false
-    description: No XML and only __topMessage
-    groupId: sNCI0F
-  - id: comment
-    filter: "true"
-    disabled: null
-    conf:
-      comment: Default On - In some events, the Message = Description and we can drop
-        the extra key.
-  - id: comment
-    filter: "true"
-    disabled: true
-    conf:
-      comment: Drop Message field from events using a lookup table based on LogName
-        and EventCode
-    groupId: S3tT36
-  - id: eval
-    filter: typeof Message =='string' &&
-      C.Lookup(C.vars.Message_EventCode_LogName,'LogName').match(LogName) &&
-      C.Lookup(C.vars.Message_EventCode_LogName,'EventCode').match(EventCode)
-    disabled: true
-    conf:
-      remove:
-        - Message
-    description: Drop Message field from events with a static _raw.Message field
-      with no other subfields
-    groupId: S3tT36
-    final: false
+          value: __topMessage
+    description: Default:ON - Set Message to the __topMessage
   - id: code
     filter: "true"
     disabled: false
@@ -733,26 +340,32 @@ functions:
       maxNumOfIterations: 5000
       code: >-
         try {
+          // Find fields that do not start with '_' and contain '###SEP###' pattern in field value; Returns field names as array.
+          const fields = Object.keys(__e).filter(field =>
+            !field.startsWith('_') && /###SEP###/.test(__e[field])
+          );
 
-        Object.keys(__e)
+          // Create new object with modified fields and values
+          const modifiedFields = fields.reduce((acc, field) => {
+            // Split field value on '###SEP###' pattern, remove '---' and empty elements
+            const modifiedValue = __e[field]
+              .split(/###SEP###/)
+              .filter(item => item !== '---' && item.trim() !== '');
 
-        // Find fields that do not start with '_' and contains pattern in field value; Returns field names as array.
-            .filter(field =>
-                !field.startsWith('_') && /###SEP###/.test(__e[field])
-            ).forEach(arrayField =>
-            // Split on pattern and keep only non-empty elements
-                __e[arrayField] = __e[arrayField]
-                    .split('###SEP###')
-                    .filter(item => item)
-            )
-        } catch (err) {}
+            // Check if modified value is an array with only one element, and set to that element
+            // Otherwise, set to modified array
+            acc[field] = modifiedValue.length === 1 ? modifiedValue[0] : modifiedValue;
 
+            return acc;
+          }, {});
 
-        Object.keys(__e)
-            .filter(field => !field.startsWith('_') && Array.isArray(__e[field]) && __e[field].length === 1)
-            .forEach(arrayField => __e[arrayField] = __e[arrayField][0])
+          // Copy modified fields and values back into original object
+          Object.assign(__e, modifiedFields);
+        } catch (error) {
+          // Do nothing
+        }
     final: false
-    description: "Make arrays from fields containing ###SEP###"
+    description: Create arrays where necessary
   - id: mask
     filter: "true"
     disabled: false
@@ -764,49 +377,12 @@ functions:
           replaceExpr: "' '"
         - matchRegex: /^\s/
           replaceExpr: "''"
-        - matchRegex: /^{/
-          replaceExpr: "''"
-        - matchRegex: /}$/
-          replaceExpr: "''"
       fields:
         - "!_*"
         - "*"
       depth: 5
     description: "Replace ###UP###"
     final: false
-  - id: comment
-    filter: "true"
-    disabled: null
-    conf:
-      comment: Create _raw JSON STRING (NOT Object) from the field results from
-        __bottomMessage && __topMessage
-  - id: serialize
-    filter: "true"
-    disabled: false
-    conf:
-      type: json
-      dstField: __arrayField
-      fields:
-        - Target_*
-        - Creator_*
-        - Subject_*
-        - New_Logon_*
-        - Account_*
-    description: Serialize all the user related field, push them into an internal
-      __arrayField,
-    groupId: 8LP9fF
-    final: false
-  - id: regex_extract
-    filter: "true"
-    disabled: false
-    conf:
-      source: __arrayField
-      iterations: 100
-      overwrite: true
-      regex: /(?<_KEY_0>[A-Za-z]+_[A-Za-z]+)":"(?<_VALUE_0>[^"]+?)"/
-    groupId: 8LP9fF
-    final: false
-    description: then use Regex to pull out the multi-value keys from the __arrayField
   - id: serialize
     filter: "true"
     disabled: false
@@ -835,15 +411,15 @@ functions:
     filter: "true"
     disabled: false
     conf:
-      mode: extract
+      mode: reserialize
       type: json
       srcField: _raw
       cleanFields: false
       allowedKeyChars: []
       allowedValueChars: []
-      dstField: _raw
       fieldFilterExpr: value!= '-'
     description: Remove any - values
+    final: false
   - id: eval
     filter: "true"
     disabled: false
@@ -875,7 +451,6 @@ functions:
       cleanFields: false
       allowedKeyChars: []
       allowedValueChars: []
-      fieldFilterExpr: value!= '-'
     description: Parse all fields to top level
     final: false
   - id: eval
@@ -984,22 +559,5 @@ functions:
         - Privileges*
         - EventCode
         - SourceName
-    description: Keep field needed by transforms at top level
+    description: Keep fields needed by transforms at top level
     final: false
-  - id: eval
-    filter: "true"
-    disabled: false
-    conf:
-      add:
-        - disabled: false
-          name: _raw
-          value: JSON.stringify(_raw)
-    description: Stringify to ensure metrics and license comparison with Splunk is accurate
-  - id: eval
-    filter: "true"
-    disabled: null
-    conf:
-      add:
-        - disabled: false
-          name: _raw
-          value: JSON.parse(_raw)
