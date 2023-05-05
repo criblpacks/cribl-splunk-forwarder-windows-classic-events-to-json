@@ -56,6 +56,8 @@ To use this Pack, follow these steps:
 ---
 ## **Release Notes**
 ---
+**1.1.7** - 2023-05-05: Additional whitespace cleanup again.
+
 **1.1.6** - 2023-05-05: Fix Powershell whitespace cleanup.
 
 **1.1.5** - 2023-04-20: Separate the Pack Routes for PowerShell, XML in Message, and the rest of the events into their own Routes and removed all Final Flags from the pipelines. Reduced the lookup tables to a single allow list by EventCode.

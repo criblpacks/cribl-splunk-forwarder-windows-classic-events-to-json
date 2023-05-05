@@ -59,8 +59,6 @@ functions:
           replaceExpr: "''"
         - matchRegex: /^\s+/gm
           replaceExpr: "''"
-        - matchRegex: /\s?([=.|:;(),])\s?/gm
-          replaceExpr: "`${g1}`"
       fields:
         - Message
       depth: 5
