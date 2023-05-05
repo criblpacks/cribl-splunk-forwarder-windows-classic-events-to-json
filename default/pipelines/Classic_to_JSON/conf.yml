@@ -4,17 +4,17 @@ groups:
     name: Long Key Names
     description: Default:OFF - long keys add to the size of the event.
     disabled: true
-    index: 4
+    index: 3
   LWxWrH:
     name: Per EventCode Exceptions
     description: Ensure the following EventCodes are handled properly
-    index: 6
+    index: 5
     disabled: false
   yalV7t:
     name: Unique Masking
     description: When the default Mask above does not properly parse the event you
       can create a new Mask to ensure the __bottomMessage is created properly.
-    index: 10
+    index: 9
 asyncFuncTimeout: 1000
 functions:
   - id: comment
@@ -42,12 +42,6 @@ functions:
         - regex: /^(?<__preMessage>[\S\s]+)Message=(?<__topMessage>.+)$([\r\n]+(?<__bottomMessage>[\S\s]+))?/m
     final: false
     description: Extract the EventCode to an internal field.
-  - id: drop
-    filter: "!C.Lookup(C.vars.Allow_List,'EventCode').match(__EventCode)"
-    disabled: true
-    conf: {}
-    description: Default:OFF - Drop events that are not listed in the Allow_List
-      Lookup table
   - id: comment
     filter: "true"
     disabled: true

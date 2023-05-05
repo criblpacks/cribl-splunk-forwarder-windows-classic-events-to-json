@@ -56,11 +56,13 @@ To use this Pack, follow these steps:
 ---
 ## **Release Notes**
 ---
-**1.1.5** - 2022-04-20: Separate the Pack Routes for PowerShell, XML in Message, and the rest of the events into their own Routes and removed all Final Flags from the pipelines. Reduced the lookup tables to a single allow list by EventCode.
+**1.1.6** - 2023-05-05: Fix Powershell whitespace cleanup.
 
-**1.1.4** - 2022-03-31: Pull EventCode and SourceName to top level fields to ensure that signature_id, src and dst fields are created.
+**1.1.5** - 2023-04-20: Separate the Pack Routes for PowerShell, XML in Message, and the rest of the events into their own Routes and removed all Final Flags from the pipelines. Reduced the lookup tables to a single allow list by EventCode.
 
-**1.1.3** - 2022-03-31: The Search-time operation sequence of Splunk will perform the transforms before the KV_MODE.  Since the Windows TA isn't designed for JSON, the recommended approach is to send across the top level index-time fields.
+**1.1.4** - 2023-03-31: Pull EventCode and SourceName to top level fields to ensure that signature_id, src and dst fields are created.
+
+**1.1.3** - 2023-03-31: The Search-time operation sequence of Splunk will perform the transforms before the KV_MODE.  Since the Windows TA isn't designed for JSON, the recommended approach is to send across the top level index-time fields.
 
 ```
 ______________________________________________________________________________
@@ -95,17 +97,17 @@ UserData_Xml User_ID User_Name Workstation WorkstationName Workstation_Name new_
 parent_process service_path signature signature_message vendor_privilege Privileges
 ```
 
-**1.1.2** - 2022-03-27: Added Tweaks for some EventCodes in Eval Functions 16-19.  Added Try/Catch to all Code functions to clean up Cribl logging.
+**1.1.2** - 2023-03-27: Added Tweaks for some EventCodes in Eval Functions 16-19.  Added Try/Catch to all Code functions to clean up Cribl logging.
 
-**1.1.1** - 2022-01-27: Updated Function 32 to support Account_* for multivalued fields.
+**1.1.1** - 2023-01-27: Updated Function 32 to support Account_* for multivalued fields.
 
-**1.1.0** - 2022-01-26: Brought back the multi-valued fields in _raw and as top level fields to get around the curly brace issue that Splunk has with search time extractions from JSON arrays.  That's why there is a props.conf file at the top, to auto-extract JSON, and the top level arrays ensure you get both an Account_Name{} field and an Account_Name.  Splunk gives you the ability to dorp curly braces using props.conf, but only with indexed time fields. Splunk should add support in the JSON_TRIM_BRACES_IN_ARRAY_NAMES option of props.conf to support search time extractions without curly braces. 
+**1.1.0** - 2023-01-26: Brought back the multi-valued fields in _raw and as top level fields to get around the curly brace issue that Splunk has with search time extractions from JSON arrays.  That's why there is a props.conf file at the top, to auto-extract JSON, and the top level arrays ensure you get both an Account_Name{} field and an Account_Name.  Splunk gives you the ability to dorp curly braces using props.conf, but only with indexed time fields. Splunk should add support in the JSON_TRIM_BRACES_IN_ARRAY_NAMES option of props.conf to support search time extractions without curly braces. 
 
-**1.0.1** - 2022-01-10: Fixed minor pack issue.
+**1.0.1** - 2023-01-10: Fixed minor pack issue.
 
-**1.0.0** - 2022-01-10: Added a code function before the initial Mask that maps the top level section such as Subject to the Key Names below it, like Account Name. This will make a key such as Subject_Account_Name.  Since the Keys are now unique, this also has a side benefit where arrays were no longer necessary to be extracted at the top level.
+**1.0.0** - 2023-01-10: Added a code function before the initial Mask that maps the top level section such as Subject to the Key Names below it, like Account Name. This will make a key such as Subject_Account_Name.  Since the Keys are now unique, this also has a side benefit where arrays were no longer necessary to be extracted at the top level.
 
-**0.9.0** - 2022-01-10: Initial release.
+**0.9.0** - 2023-01-10: Initial release.
 
 
 ## **Contributing to the Pack**
