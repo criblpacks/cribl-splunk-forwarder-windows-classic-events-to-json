@@ -56,6 +56,8 @@ To use this Pack, follow these steps:
 ---
 ## **Release Notes**
 ---
+**1.1.8** - 2023-05-05: Sample cleanup.
+
 **1.1.7** - 2023-05-05: Additional whitespace cleanup again.
 
 **1.1.6** - 2023-05-05: Fix Powershell whitespace cleanup.
