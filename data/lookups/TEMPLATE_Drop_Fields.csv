@@ -1,9 +1,0 @@
-EventCode,drops
-4627,"Group_Membership,Logon_ID"
-4653,"Keying_Module_Port,Network_Address"
-4661,"Accesses,Properties"
-5441,"Condition_ID,Condition_value,ID,Match_value,Name,Run-Time_ID"
-5888,"Object_Details,Object_Name"
-5889,"Object_Details,Object_Name"
-5890,"Object_Details,Object_Name"
-6416,"Compatible_IDs,Vendor_IDs"

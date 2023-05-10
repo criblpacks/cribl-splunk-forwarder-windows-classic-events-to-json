@@ -1,5 +1,0 @@
-size: 4754
-description: If the LogName and EventCode are in this table, the static Message
-  can be dropped.
-tags: LogName,EventCode,Message
-rows: 324
