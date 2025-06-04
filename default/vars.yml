@@ -14,7 +14,7 @@ Drop_Fields:
   value: "'TEMPLATE_Drop_Fields.csv'"
   description: Change the value below to Drop_Fields.csv
 Allow_List:
-  type: any
+  type: string
   lib: custom
   value: "'TEMPLATE_Allow_List_by_EventCode.csv'"
   description: Keep only the follow Events

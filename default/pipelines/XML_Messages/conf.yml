@@ -1,5 +1,10 @@
 output: default
-groups: {}
+groups:
+  FUd37z:
+    name: Long Key Names
+    description: Default:OFF - long keys add to the size of the event.
+    disabled: true
+    index: 13
 asyncFuncTimeout: 1000
 functions:
   - id: comment
@@ -86,6 +91,12 @@ functions:
     disabled: false
     conf:
       add:
+        - disabled: false
+          name: __xmlTopMessage
+          value: __bottomMessage.match(/(^[\S\s]+?)\</)[1]
+        - disabled: false
+          name: __bottomMessage
+          value: __bottomMessage.replace(/^([\S\s]+?\<)/,'\<')
         - value: C.Text.parseXml(__bottomMessage,true,true)
           name: Message
     description: Evaluate __Message for XML content and extract fields accordingly
@@ -103,12 +114,23 @@ functions:
     description: Flatten the XML from the Message
   - id: rename
     filter: "true"
-    disabled: false
+    disabled: null
     conf:
       wildcardDepth: 5
-      renameExpr: "name.startsWith('Message_') ? name.replace(/.+_/,'') : name"
+      renameExpr: name.replace(/Message_Task/,'Task_Content')
+    description: Clean up
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      add:
+        - disabled: false
+          name: __bottomMessage
+          value: __xmlTopMessage.replace(/\r\n\tTask\sContent:.+/m,'')
+      remove:
+        - XML_*
+    description: Replace __bottomMessage
     final: false
-    description: Clean up flattened key names
   - id: comment
     filter: "true"
     disabled: false
@@ -123,6 +145,102 @@ functions:
           value: __topMessage.trim()
     final: false
     description: Pull the actual top Message
+  - id: comment
+    filter: "true"
+    disabled: true
+    conf:
+      comment: Create sections from Message and take top key and prepend to all
+        sub-keys to ensure proper key names
+    groupId: FUd37z
+  - id: code
+    filter: "true"
+    disabled: true
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        /* Split __bottomMessage into an array of elements */
+
+        __e['__blocks_1'] = __e['__bottomMessage'].replace(/\r\r\n/g,'\r\n').split('\r\n\r\n')
+
+
+        for (let i = 0; i < __e['__blocks_1'].length; i++) {
+            let block = __e['__blocks_1'][i];
+            var block_lines = block.split('\r\n');
+            if (block_lines.length > 1) {
+                var prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
+                for (let j = 1; j < block_lines.length; j++) {
+                    block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
+                }
+                __e['__blocks_1'][i] = block_lines.join('\r\n')
+            }  
+        }
+
+
+        __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n')
+
+        delete __e['__blocks_1']
+    groupId: FUd37z
+  - id: mask
+    filter: "true"
+    disabled: false
+    conf:
+      rules:
+        - matchRegex: /([^\r])\n/
+          replaceExpr: "`${g1}\\r\\n`"
+        - matchRegex: /_/g
+          replaceExpr: "'###UP###'"
+        - matchRegex: /\t\t\t\t/g
+          replaceExpr: "'###SEP###'"
+        - matchRegex: /\r+\n\t\t+/g
+          replaceExpr: "'###SEP###'"
+        - matchRegex: /([^\r])\n/g
+          replaceExpr: "`${g1}\\r\\n`"
+        - matchRegex: /(:)\t\r\n/
+          replaceExpr: "`${g1}\\t-\\r\\n`"
+        - matchRegex: /\s+\r\r\n/g
+          replaceExpr: "'____'"
+        - matchRegex: /\s+\r\n\r\n/g
+          replaceExpr: "'____'"
+        - matchRegex: /\s+\r\n\s+/g
+          replaceExpr: "'___'"
+        - matchRegex: /\r\n\s+/g
+          replaceExpr: "'___'"
+        - matchRegex: "/ : /g"
+          replaceExpr: "':'"
+        - matchRegex: /:\s+/g
+          replaceExpr: "':__'"
+        - matchRegex: /\s+:/g
+          replaceExpr: "':'"
+        - matchRegex: /:###SEP###/g
+          replaceExpr: "':__'"
+        - matchRegex: /\s=\s/g
+          replaceExpr: "'='"
+        - matchRegex: /\t/g
+          replaceExpr: "'###SEP###'"
+        - matchRegex: /^###SEP###\r\n/
+          replaceExpr: "''"
+        - matchRegex: /__\s/g
+          replaceExpr: "'___'"
+      fields:
+        - __bottomMessage
+      depth: 5
+    description: Create a normalized schema for the __bottomMessage.  The Filter
+      excludes events that don't parse using the Mask function below.
+    final: false
+  - id: regex_extract
+    filter: "true"
+    disabled: false
+    conf:
+      source: __bottomMessage
+      iterations: 1000
+      overwrite: false
+      regex: /(?<_NAME_0>[\p{L}][()0-9-\s\/'’\p{L}\/\+\.]+):_{1,2}(?<_VALUE_0>[^_\r\n]+)/gu
+      fieldNameExpression: name.replace(/
+        /g,'_').replace(/[()]([^:])/g,`_$1`).replace(/['’]/g,'').replace(/[\/]/g,'_').replace(/[\+]/g,'').replace(/[\.]/g,'').replace(/__/g,'_').replace(/\)/,'')
+      regexList: []
+    description: Regular expression to handle all languages for the Key names
+      extracting the Keys to the top level.
+    final: false
   - id: mask
     filter: "true"
     disabled: false
@@ -313,3 +431,35 @@ functions:
         - SourceName
     description: Keep field needed by transforms at top level
     final: false
+  - id: code
+    filter: "true"
+    disabled: false
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        // Try to parse the value stored in __e._raw as JSON and assign it to
+        the 'raw' variable.
+
+        try {
+          var raw = JSON.parse(__e._raw);
+
+          // Iterate over each key-value pair in the __e object.
+          for (let [key, value] of Object.entries(__e)) {
+            // Check if the key does not start with an underscore (_) and the corresponding property exists in the 'raw' object.
+            if (!key.startsWith('_') && raw[key]) {
+              // Set the value of the property to undefined, effectively removing it from 'raw'.
+              raw[key] = undefined;
+            }
+          }
+
+          // Convert the 'raw' object back to a JSON string and update the __e['_raw'] with the new value.
+          __e['_raw'] = JSON.stringify(raw);
+        } catch (error) {
+          // If an error occurs during the process, catch it and save the error message as a string in __e['cribl_code_error'].
+          __e['cribl_code_error'] = String(error);
+        }
+    description: Remove any duplicate keys that exist in _raw when they are also in
+      top level fields.
+streamtags: []
+description: Converts  Splunk Forwarder Microsoft-Windows Classic events where
+  Message also contains XML to JSON

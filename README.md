@@ -13,7 +13,25 @@ Reduction is diff
 
 ### **props.conf**
 
-Add the following stanza to a **props.conf** file on the **Splunk search head**: `$SPLUNK_HOME/etc/system/local/props.conf` to override the Splunk Add-On settings for the Windows sources.  The props.conf can also be deployed in a new app using the Splunk deployment server.
+Add the following stanza to a **props.conf** file on the **Splunk search head**:
+
+* `$SPLUNK_HOME/etc/system/local/props.conf`
+* `$SPLUNK_HOME/etc/apps/Splunk_TA_windows/local/props.conf`
+* `$SPLUNK_HOME/etc/apps/YOUR_APP_NAME_LEXICOGRAPHICALLY_AFTER_Splunk_TA_windows/local/props.conf`
+
+This will override the Splunk Add-On for Microsoft Windows settings for the Windows sources.  The props.conf can also be deployed in a new app using the Splunk deployment server.  If using a custom app, remember: [Search Time Order of Precedence](https://docs.splunk.com/Documentation/Splunk/latest/Admin/Wheretofindtheconfigurationfiles) matters where the app name needs to be alphabetically **after** the Splunk_TA_windows or in local of the TA, or in system/local.
+
+Notice App/user context is the opposite of index time order of precedence.
+
+```
+App/user context
+$SPLUNK_HOME/etc/users/*
+$SPLUNK_HOME/etc/apps/Current_running_app/local/*
+$SPLUNK_HOME/etc/apps/Current_running_app/default/*
+$SPLUNK_HOME/etc/apps/z/local/*, $SPLUNK_HOME/etc/apps/z/default/*, ... $SPLUNK_HOME/etc/apps/A/local/*, $SPLUNK_HOME/etc/apps/A/default/* 
+$SPLUNK_HOME/etc/system/local/*
+$SPLUNK_HOME/etc/system/default/*
+```
 
 ```
 [source::WinEventLog...]
@@ -34,28 +52,14 @@ To use this Pack, follow these steps:
 1. Install the pack
 2. Create a Route/Filter to send all Windows Classic Events through the Pack
 
----
-## **Important - Ensure you follow the Lookup steps below to avoid any data loss on Pack updates!**
-
-### **TEMPLATE_Allow_List_by_EventCode.csv**
-1. A lookup table that only allows specific events and drops the rest.
-1. Follow the steps below to preserve your changes on any Pack updates
-1. Open the **`TEMPLATE_Allow_List_by_EventCode.csv`** in the Pack Knowledge.
-1. Select the Text option by the Edit Mode.
-1. Copy and paste the entire contents of the lookup table to memory or to a new **`Allow_List_by_EventCode.csv`** text file.
-1. Notice we removed the word **Template**.
-1. Close the Pack lookup table.
-1. In the **`Allow_List_by_EventCode.csv`** text file, modify the content to suit your requirements and save this file locally.
-1. Create a new lookup table within the Pack by selecting the New Lookup File button.  There are two options to choose from:
-	1. Choose **Upload a New File** using the file you created.
-	1. Select **Create with Text Editor** option, Filename: **`Allow_List_by_EventCode.csv`** and paste the contents.
-	1. Select **Save**
-1. Under the **Pack Knowledge/Global Variables** adjust the value to: **`Allow_List_by_EventCode.csv`**
-1. By selecting Save, Commit & Deploy, you are creating a local copy of the Pipelines persist on Pack updates.
 
 ---
 ## **Release Notes**
 ---
+**1.2.0** - 2023-11-20: Adjust README and note the search-time reverse order of precedence.
+
+**1.1.9** - 2023-06-19: Fix XML_Messages pipeline for Classic Events, add Code Function to all pipelines to remove duplicate keys that exist in _raw when they are also in top level fields.
+
 **1.1.8** - 2023-05-05: Sample cleanup.
 
 **1.1.7** - 2023-05-05: Additional whitespace cleanup again.
@@ -86,19 +90,7 @@ ______________________________________________________________________________
 ```
 Per EventCode, the following fields are preserved at the top level to ensure that transforms continue to work as expected:
 ```
-_raw _time cribl_pipe cribl_breaker index source sourcetype host hf punct date_* time*pos* before*
-Account_Domain Account_Name Caller_Computer_Name Caller_Domain Caller_Logon_ID Caller_Machine_Name
-Caller_User_Name Change_Type Client_Address Client_Domain Client_Logon_ID Client_Machine_Name Client_User_Name
-ComputerName Creator_Process_Name Description Domain EventData_Xml EventID EventRecordID FileName File_Name File_Path
-Group_Domain Group_Type_Change Image_File_Name IpAddress IpPort KeyFilePath LogFileCleared_Xml
-LogonType Logon_Account Logon_ID Logon_account MemberName Member_ID Member_Name Message New_Account_Name
-New_Domain New_Process_Name ObjectName Object_Name Primary_Domain Primary_User_Name PrivilegeList
-Process_Command_Line RenderingInfo_Xml Security_ID Source_Network_Address Source_Workstation SubStatus
-SubjectDomainName SubjectLogonId SubjectUserName Supplied_Realm_Name System_Props_Xml TargetDomainName
-TargetProcessName TargetServerName TargetUserName Target_Account_ID Target_Account_Name Target_Domain
-Target_Process_Name Target_Server_Name Target_User_Name TokenElevationType Token_Elevation_Type User
-UserData_Xml User_ID User_Name Workstation WorkstationName Workstation_Name new_process nt_host param1
-parent_process service_path signature signature_message vendor_privilege Privileges
+_raw* _time* cribl_pipe* cribl_breaker* index source sourcetype host hf* punct* date_* time*pos* before* Account_Domain* Account_Name* Caller_Computer_Name* Caller_Domain* Caller_Logon_ID* Caller_Machine_Name* Caller_User_Name* Change_Type* Client_Address* Client_Domain* Client_Logon_ID* Client_Machine_Name* Client_User_Name* ComputerName* Creator_Process_Name* Description* Domain* EventData_Xml* EventID* EventRecordID* FileName* File_Name* File_Path* Group_Domain* Group_Type_Change* Image_File_Name* IpAddress* IpPort* KeyFilePath* LogFileCleared_Xml* LogonType* Logon_Account* Logon_ID* Logon_account* MemberName* Member_ID* Member_Name* New_Account_Name* New_Domain* New_Process_Name* ObjectName* Object_Name* Primary_Domain* Primary_User_Name* PrivilegeList* Process_Command_Line* RenderingInfo_Xml* Security_ID* Source_Network_Address* Source_Workstation* SubStatus* SubjectDomainName* SubjectLogonId* SubjectUserName* Supplied_Realm_Name* System_Props_Xml* TargetDomainName* TargetProcessName* TargetServerName* TargetUserName* Target_Account_ID* Target_Account_Name* Target_Domain* Target_Process_Name* Target_Server_Name* Target_User_Name* TokenElevationType* Token_Elevation_Type* User* UserData_Xml* User_ID* User_Name* Workstation* WorkstationName* Workstation_Name* new_process* nt_host* param1* parent_process* service_path* signature* signature_message* vendor_privilege* Privileges* EventCode SourceName
 ```
 
 **1.1.2** - 2023-03-27: Added Tweaks for some EventCodes in Eval Functions 16-19.  Added Try/Catch to all Code functions to clean up Cribl logging.

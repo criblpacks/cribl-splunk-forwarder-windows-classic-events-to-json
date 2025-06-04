@@ -16,7 +16,8 @@ routes:
     clones: []
     enableOutputExpression: false
     outputExpression: null
-    filter: /SourceName=.+?PowerShell|stack trace/im.test(_raw)
+    filter: /SourceName=.+?PowerShell|stack trace/im.test(_raw) ||
+      /EventCode=4898/.test(_raw)
     output: default
   - id: hmp8o6
     name: XML in Message
@@ -34,7 +35,7 @@ routes:
     final: true
     disabled: false
     pipeline: Classic_to_JSON
-    description: Converts  Splunk Forwarder Microsoft-Windows Classic events to JSON
+    description: Converts  Splunk Forwarder Microsoft Windows Classic events to JSON
     clones: []
     enableOutputExpression: false
     outputExpression: null

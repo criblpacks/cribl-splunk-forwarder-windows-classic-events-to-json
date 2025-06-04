@@ -377,6 +377,31 @@ functions:
       depth: 5
     description: "Replace ###UP###"
     final: false
+  - id: eval
+    filter: Caller_Process_Name || Process_Information_Caller_Process_Name
+    disabled: false
+    conf:
+      add:
+        - disabled: false
+          name: Caller_Process_Path
+          value: Caller_Process_Name
+        - disabled: false
+          name: Caller_Process_Name
+          value: Caller_Process_Name.match(/.+\\(.+)/)[1]
+        - disabled: false
+          value: Process_Information_Caller_Process_Name
+          name: Process_Information_Caller_Process_Path
+        - disabled: false
+          value: Process_Information_Caller_Process_Name.match(/.+\\(.+)/)[1]
+          name: Process_Information_Caller_Process_Name
+        - disabled: false
+          name: process
+          value: Caller_Process_Name
+        - disabled: false
+          name: process_path
+          value: Caller_Process_Path
+    final: false
+    description: Caller_Process_Name and Caller_Process_Path
   - id: serialize
     filter: "true"
     disabled: false
@@ -411,7 +436,6 @@ functions:
       cleanFields: false
       allowedKeyChars: []
       allowedValueChars: []
-      fieldFilterExpr: value!= '-'
     description: Remove any - values
     final: false
   - id: eval
@@ -553,5 +577,37 @@ functions:
         - Privileges*
         - EventCode
         - SourceName
+      add: []
     description: Keep fields needed by transforms at top level
     final: false
+  - id: code
+    filter: "true"
+    disabled: false
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        // Try to parse the value stored in __e._raw as JSON and assign it to
+        the 'raw' variable.
+
+        try {
+          var raw = JSON.parse(__e._raw);
+
+          // Iterate over each key-value pair in the __e object.
+          for (let [key, value] of Object.entries(__e)) {
+            // Check if the key does not start with an underscore (_) and the corresponding property exists in the 'raw' object.
+            if (!key.startsWith('_') && raw[key]) {
+              // Set the value of the property to undefined, effectively removing it from 'raw'.
+              raw[key] = undefined;
+            }
+          }
+
+          // Convert the 'raw' object back to a JSON string and update the __e['_raw'] with the new value.
+          __e['_raw'] = JSON.stringify(raw);
+        } catch (error) {
+          // If an error occurs during the process, catch it and save the error message as a string in __e['cribl_code_error'].
+          __e['cribl_code_error'] = String(error);
+        }
+    description: Remove any duplicate keys that exist in _raw when they are also in
+      top level fields.
+streamtags: []
+description: Converts  Splunk Forwarder Microsoft-Windows Classic events to JSON

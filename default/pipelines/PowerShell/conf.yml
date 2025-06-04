@@ -29,12 +29,6 @@ functions:
         - regex: /^(?<__preMessage>[\S\s]+)Message=(?<Message>[\S\s]+)/
     final: false
     description: Extract the EventCode, LogName, and Event Parts
-  - id: drop
-    filter: "!C.Lookup(C.vars.Allow_List,'EventCode').match(__EventCode)"
-    disabled: true
-    conf: {}
-    description: Default:OFF - Drop events that are not listed in the Allow_List
-      Lookup table
   - id: serde
     filter: "true"
     disabled: false
@@ -63,6 +57,7 @@ functions:
         - Message
       depth: 5
     final: false
+    description: Clean up
   - id: serialize
     filter: "true"
     disabled: false
@@ -191,5 +186,34 @@ functions:
         - SourceName
     description: Keep fields needed by transforms at top level
     final: false
+  - id: code
+    filter: "true"
+    disabled: false
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        // Try to parse the value stored in __e._raw as JSON and assign it to
+        the 'raw' variable.
+
+        try {
+          var raw = JSON.parse(__e._raw);
+
+          // Iterate over each key-value pair in the __e object.
+          for (let [key, value] of Object.entries(__e)) {
+            // Check if the key does not start with an underscore (_) and the corresponding property exists in the 'raw' object.
+            if (!key.startsWith('_') && raw[key]) {
+              // Set the value of the property to undefined, effectively removing it from 'raw'.
+              raw[key] = undefined;
+            }
+          }
+
+          // Convert the 'raw' object back to a JSON string and update the __e['_raw'] with the new value.
+          __e['_raw'] = JSON.stringify(raw);
+        } catch (error) {
+          // If an error occurs during the process, catch it and save the error message as a string in __e['cribl_code_error'].
+          __e['cribl_code_error'] = String(error);
+        }
+    description: Remove any duplicate keys that exist in _raw when they are also in
+      top level fields.
 description: Perform minimal processing of events with PowerShell or other
   complex Messages where the contents should now be parsed.
