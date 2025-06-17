@@ -17,7 +17,7 @@ routes:
     enableOutputExpression: false
     outputExpression: null
     filter: /SourceName=.+?PowerShell|stack trace/im.test(_raw) ||
-      /EventCode=4898/.test(_raw)
+      /EventCode=(?:4898|33205)/.test(_raw)
     output: default
   - id: hmp8o6
     name: XML in Message

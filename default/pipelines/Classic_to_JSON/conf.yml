@@ -40,6 +40,7 @@ functions:
       regexList:
         - regex: /LogName=(?<__LogName>\w+)/
         - regex: /^(?<__preMessage>[\S\s]+)Message=(?<__topMessage>.+)$([\r\n]+(?<__bottomMessage>[\S\s]+))?/m
+        - regex: /Message=(?<__message>[\S\s]+)/
     final: false
     description: Extract the EventCode to an internal field.
   - id: comment
@@ -54,32 +55,65 @@ functions:
     disabled: true
     conf:
       maxNumOfIterations: 5000
+      activeLogSampleRate: 1
+      useUniqueLogChannel: true
       code: >-
-        /* Split __bottomMessage into an array of elements */
+        try {
+            if (typeof __e['__bottomMessage'] === 'string') {
+                // Normalize line endings and split into blocks
+                __e['__blocks_1'] = __e['__bottomMessage'].replace(/\r\r\n/g, '\r\n').split('\r\n\r\n');
 
-        __e['__blocks_1'] = __e['__bottomMessage'].replace(/\r\r\n/g,'\r\n').split('\r\n\r\n')
+                for (let i = 0; i < __e['__blocks_1'].length; i++) {
+                    let block = __e['__blocks_1'][i];
+                    let block_lines = block.split('\r\n');
 
-
-        for (let i = 0; i < __e['__blocks_1'].length; i++) {
-            let block = __e['__blocks_1'][i];
-            var block_lines = block.split('\r\n');
-            if (block_lines.length > 1) {
-                var prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
-                for (let j = 1; j < block_lines.length; j++) {
-                    block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
+                    if (block_lines.length > 1) {
+                        let prepend_key = block_lines[0].replace(/[: \r\n]+$/, '');
+                        for (let j = 1; j < block_lines.length; j++) {
+                            block_lines[j] = block_lines[j].replace(/^(\W+)/, `$1${prepend_key} `);
+                        }
+                        __e['__blocks_1'][i] = block_lines.join('\r\n');
+                    }
                 }
-                __e['__blocks_1'][i] = block_lines.join('\r\n')
-            }  
+
+                __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n');
+                delete __e['__blocks_1'];
+            }
+        } catch (err) {
+            __e.CRIBLERR = err.toString();
         }
-
-
-        __e['__bottomMessage'] = __e['__blocks_1'].join('\r\n\r\n')
-
-        delete __e['__blocks_1']
-    final: false
+    groupId: QEXVGx
     description: Create sections from Message and take top key and prepend to all
       subkeys to ensure proper key names
+  - id: mask
+    filter: __bottomMessage
+    disabled: true
+    conf:
+      rules:
+        - disabled: false
+          matchRegex: /Privileges:\t+SeSecurityPrivilege /g
+          replaceExpr: "''"
+      fields:
+        - __bottomMessage
+      depth: 5
     groupId: QEXVGx
+    final: false
+  - id: eval
+    filter: __bottomMessage
+    disabled: true
+    conf:
+      add:
+        - disabled: false
+          name: __privileges
+          value: __bottomMessage.match(/Privileges:([\S\s]+)/)[1].replace(/\t+/g,'')
+        - disabled: false
+          name: __privileges
+          value: __privileges.replace(/\r\n/g,',')
+        - disabled: false
+          name: __bottomMessage
+          value: __bottomMessage.replace(/\r\nPrivileges:([\S\s]+)/,'')
+    groupId: QEXVGx
+    final: false
   - id: comment
     filter: "true"
     disabled: null
@@ -160,40 +194,58 @@ functions:
       rules:
         - matchRegex: /([^\r])\n/
           replaceExpr: "`${g1}\\r\\n`"
+          disabled: false
         - matchRegex: /_/g
           replaceExpr: "'###UP###'"
+          disabled: false
         - matchRegex: /\t\t\t\t/g
           replaceExpr: "'###SEP###'"
+          disabled: false
         - matchRegex: /\r+\n\t\t+/g
           replaceExpr: "'###SEP###'"
+          disabled: false
         - matchRegex: /([^\r])\n/g
           replaceExpr: "`${g1}\\r\\n`"
+          disabled: false
         - matchRegex: /(:)\t\r\n/
           replaceExpr: "`${g1}\\t-\\r\\n`"
+          disabled: false
         - matchRegex: /\s+\r\r\n/g
           replaceExpr: "'____'"
+          disabled: false
         - matchRegex: /\s+\r\n\r\n/g
           replaceExpr: "'____'"
+          disabled: false
         - matchRegex: /\s+\r\n\s+/g
           replaceExpr: "'___'"
+          disabled: false
         - matchRegex: /\r\n\s+/g
           replaceExpr: "'___'"
+          disabled: false
         - matchRegex: "/ : /g"
           replaceExpr: "':'"
+          disabled: false
         - matchRegex: /:\s+/g
           replaceExpr: "':__'"
+          disabled: false
         - matchRegex: /\s+:/g
           replaceExpr: "':'"
+          disabled: false
         - matchRegex: /:###SEP###/g
           replaceExpr: "':__'"
+          disabled: false
         - matchRegex: /\s=\s/g
           replaceExpr: "'='"
+          disabled: false
         - matchRegex: /\t/g
           replaceExpr: "'###SEP###'"
+          disabled: false
         - matchRegex: /^###SEP###\r\n/
           replaceExpr: "''"
+          disabled: false
         - matchRegex: /__\s/g
           replaceExpr: "'___'"
+          disabled: false
       fields:
         - __bottomMessage
       depth: 5
@@ -218,6 +270,9 @@ functions:
     disabled: false
     conf:
       rules:
+        - disabled: false
+          matchRegex: /Subject\s+:/
+          replaceExpr: "'Subject:'"
         - matchRegex: /_/g
           replaceExpr: "'###UP###'"
         - matchRegex: /\r\n\s\t/g
@@ -327,11 +382,14 @@ functions:
           name: Message
           value: __topMessage
     description: Default:ON - Set Message to the __topMessage
+    final: false
   - id: code
     filter: "true"
     disabled: false
     conf:
       maxNumOfIterations: 5000
+      activeLogSampleRate: 1
+      useUniqueLogChannel: false
       code: >-
         try {
           // Find fields that do not start with '_' and contain '###SEP###' pattern in field value; Returns field names as array.
@@ -348,7 +406,7 @@ functions:
 
             // Check if modified value is an array with only one element, and set to that element
             // Otherwise, set to modified array
-            acc[field] = modifiedValue.length === 1 ? modifiedValue[0] : modifiedValue;
+            acc[field] = modifiedValue.length === 1 ? modifiedValue[0] : modifiedValue.join;
 
             return acc;
           }, {});
@@ -402,6 +460,23 @@ functions:
           value: Caller_Process_Path
     final: false
     description: Caller_Process_Name and Caller_Process_Path
+  - id: rename
+    filter: "true"
+    disabled: null
+    conf:
+      wildcardDepth: 5
+      renameExpr: name.replace(/Account_Account/,'Account')
+    description: Remove redundant account in long key name.
+  - id: eval
+    filter: "true"
+    disabled: null
+    conf:
+      add:
+        - disabled: false
+          name: Privileges
+          value: "__privileges ? __privileges : null"
+    description: Copy Privileges
+    final: false
   - id: serialize
     filter: "true"
     disabled: false
@@ -436,6 +511,7 @@ functions:
       cleanFields: false
       allowedKeyChars: []
       allowedValueChars: []
+      fieldFilterExpr: value!='-'  && !value.includes('NULL') && value
     description: Remove any - values
     final: false
   - id: eval
@@ -509,7 +585,6 @@ functions:
         - Description*
         - Domain*
         - EventData_Xml*
-        - EventID*
         - EventRecordID*
         - FileName*
         - File_Name*
@@ -574,8 +649,6 @@ functions:
         - signature*
         - signature_message*
         - vendor_privilege*
-        - Privileges*
-        - EventCode
         - SourceName
       add: []
     description: Keep fields needed by transforms at top level
@@ -585,6 +658,8 @@ functions:
     disabled: false
     conf:
       maxNumOfIterations: 5000
+      activeLogSampleRate: 1
+      useUniqueLogChannel: false
       code: >-
         // Try to parse the value stored in __e._raw as JSON and assign it to
         the 'raw' variable.
@@ -609,5 +684,6 @@ functions:
         }
     description: Remove any duplicate keys that exist in _raw when they are also in
       top level fields.
+    final: false
 streamtags: []
 description: Converts  Splunk Forwarder Microsoft-Windows Classic events to JSON

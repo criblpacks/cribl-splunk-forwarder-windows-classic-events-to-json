@@ -1,42 +1,89 @@
 # **Cribl Splunk Forwarder Windows Classic Events to JSON**
 ----
 
-This pack is designed to transform Splunk Windows Classic events to JSON, reduce event sizes, be compliant with the Splunk Common Information Model (CIM) and maintain backwards compatibility with:
-
-* Splunk Add-on for Microsoft Windows: https://splunkbase.splunk.com/app/742
-* Splunk Common Information Model (CIM): https://splunkbase.splunk.com/app/1621
-
-Reduction is diff
+This pack is designed to transform Splunk Windows Classic events to JSON and reduce event sizes.
 
 ---
 ## **Requirements Section**
 
-### **props.conf**
+Install or upload the following App on the **Splunk search head** to ensure all fields are properly extracted.
 
-Add the following stanza to a **props.conf** file on the **Splunk search head**:
-
-* `$SPLUNK_HOME/etc/system/local/props.conf`
-* `$SPLUNK_HOME/etc/apps/Splunk_TA_windows/local/props.conf`
-* `$SPLUNK_HOME/etc/apps/YOUR_APP_NAME_LEXICOGRAPHICALLY_AFTER_Splunk_TA_windows/local/props.conf`
-
-This will override the Splunk Add-On for Microsoft Windows settings for the Windows sources.  The props.conf can also be deployed in a new app using the Splunk deployment server.  If using a custom app, remember: [Search Time Order of Precedence](https://docs.splunk.com/Documentation/Splunk/latest/Admin/Wheretofindtheconfigurationfiles) matters where the app name needs to be alphabetically **after** the Splunk_TA_windows or in local of the TA, or in system/local.
-
-Notice App/user context is the opposite of index time order of precedence.
+* `$SPLUNK_HOME/etc/apps/ZZ_Splunk_Windows_TA_Cribl`
 
 ```
-App/user context
-$SPLUNK_HOME/etc/users/*
-$SPLUNK_HOME/etc/apps/Current_running_app/local/*
-$SPLUNK_HOME/etc/apps/Current_running_app/default/*
-$SPLUNK_HOME/etc/apps/z/local/*, $SPLUNK_HOME/etc/apps/z/default/*, ... $SPLUNK_HOME/etc/apps/A/local/*, $SPLUNK_HOME/etc/apps/A/default/* 
-$SPLUNK_HOME/etc/system/local/*
-$SPLUNK_HOME/etc/system/default/*
-```
+ZZZ_Splunk_Windows_TA_Cribl
+├── default
+│   ├── app.conf
+│   ├── props.conf
+├── metadata
+│   └── default.meta
 
-```
+--------------------
+app.conf
+[install]
+is_configured = 0
+
+[ui]
+is_visible = 0
+label = ZZZ_Splunk_Windows_TA_Cribl
+
+[launcher]
+author = Your Name
+description = 
+version = 1.2.2
+
+--------------------
+props.conf
+[source::XmlWinEventLog...]
+KV_MODE = auto
+priority = 1
+
 [source::WinEventLog...]
 KV_MODE = auto
 priority = 1
+
+--------------------
+default.meta
+[]
+export=system
+access = read : [ * ], write : [ admin, power ]
+
+--------------------
+```
+
+```
+______________________________________________________________________________
+|        Search Time          |                                              |
+|      Operation Order        |             Operation name                   |            
+| --------------------------- | -------------------------------------------- |
+|                           1 | Role-based field filtering                   |
+|                           2 | Inline field extraction (no field transform) |
+|                           3 | Field extraction that uses a field transform |
+|                           4 | Automatic key-value field extraction         |
+|                           5 | Field aliasing                               |
+|                           6 | Calculated fields                            |
+|                           7 | Lookups                                      |
+|                           8 | Event types                                  |
+|                           9 | Tags                                         |
+------------------------------------------------------------------------------
+```
+
+Per EventCode, the following fields are preserved at the top level to ensure that transforms continue to work as expected:
+
+```
+_raw _time cribl_pipe cribl_breaker index source sourcetype host hf punct date_* time*pos* before*
+Account_Domain Account_Name Caller_Computer_Name Caller_Domain Caller_Logon_ID Caller_Machine_Name
+Caller_User_Name Change_Type Client_Address Client_Domain Client_Logon_ID Client_Machine_Name Client_User_Name
+ComputerName Creator_Process_Name Description Domain EventData_Xml EventID EventRecordID FileName File_Name File_Path
+Group_Domain Group_Type_Change Image_File_Name IpAddress IpPort KeyFilePath LogFileCleared_Xml
+LogonType Logon_Account Logon_ID Logon_account MemberName Member_ID Member_Name Message New_Account_Name
+New_Domain New_Process_Name ObjectName Object_Name Primary_Domain Primary_User_Name PrivilegeList
+Process_Command_Line RenderingInfo_Xml Security_ID Source_Network_Address Source_Workstation SubStatus
+SubjectDomainName SubjectLogonId SubjectUserName Supplied_Realm_Name System_Props_Xml TargetDomainName
+TargetProcessName TargetServerName TargetUserName Target_Account_ID Target_Account_Name Target_Domain
+Target_Process_Name Target_Server_Name Target_User_Name TokenElevationType Token_Elevation_Type User
+UserData_Xml User_ID User_Name Workstation WorkstationName Workstation_Name new_process nt_host param1
+parent_process process_name service_path signature signature_message vendor_privilege Privileges Computer
 ```
 
 ### **Reloading Splunk configurations**
@@ -56,6 +103,18 @@ To use this Pack, follow these steps:
 ---
 ## **Release Notes**
 ---
+**1.2.6** - 2025-06-17: Fixed release date for 1.2.5 (Thanks Matthew!)
+
+**1.2.5** - 2025-06-07: Added Try/Catch to Long Key Names Code Function
+
+**1.2.4** - 2025-01-07: Syntax fix.
+
+**1.2.3** - 2025-01-06: Pack hygiene, clean up some samples, delete extra pipelines, etc.
+
+**1.2.2** - 2024-07-03: Two functions, Code to create the object.  Still has some nesting and will need to be adjusted based on props/transforms to deal with the multiple AccountName and other fields that have more than one value.
+
+**1.2.1** - 2024-03-27: Fields changed in final Eval to keep EventID in _raw because tstats was having issues searching by EventID as indexed field.  Other option could be to just create a fields.conf entry to handle any indexed fields passed from Cribl. Adjusted filter in Minimum Conversion Route to also skip another EventCode.
+
 **1.2.0** - 2023-11-20: Adjust README and note the search-time reverse order of precedence.
 
 **1.1.9** - 2023-06-19: Fix XML_Messages pipeline for Classic Events, add Code Function to all pipelines to remove duplicate keys that exist in _raw when they are also in top level fields.
